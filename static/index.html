@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FINAI — AI Financial Advisor</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #080b0f;
+      --bg2:          #0d1117;
+      --panel:        rgba(15, 20, 28, 0.85);
+      --border:       rgba(255,255,255,0.07);
+      --border-hover: rgba(0, 212, 170, 0.3);
+      --accent:       #00d4aa;
+      --accent-dim:   #00b894;
+      --accent-glow:  rgba(0, 212, 170, 0.12);
+      --accent-glow2: rgba(0, 212, 170, 0.06);
+      --user-bubble:  rgba(255,255,255,0.05);
+      --text:         #e2e8f0;
+      --text-dim:     #7a8a9a;
+      --text-muted:   #3a4a5a;
+      --chip-call:    rgba(255, 196, 57, 0.1);
+      --chip-call-b:  rgba(255, 196, 57, 0.3);
+      --chip-ok:      rgba(0, 212, 170, 0.1);
+      --chip-ok-b:    rgba(0, 212, 170, 0.3);
+      --chip-err:     rgba(255, 82, 82, 0.1);
+      --chip-err-b:   rgba(255, 82, 82, 0.3);
+      --r:            14px;
+      --r-sm:         8px;
+      --font:         'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.6;
+      overflow: hidden;
+    }
+
+    /* ── Animated background ─────────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0,212,170,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(0,150,255,0.05) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Animated grid */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+      animation: gridDrift 20s linear infinite;
+    }
+
+    @keyframes gridDrift {
+      from { background-position: 0 0; }
+      to   { background-position: 40px 40px; }
+    }
+
+    /* Floating orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+    .orb-1 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(0,212,170,0.15), transparent 70%);
+      top: -100px; left: -100px;
+      animation: orbFloat1 15s ease-in-out infinite;
+    }
+    .orb-2 {
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(0,150,255,0.1), transparent 70%);
+      bottom: -80px; right: -80px;
+      animation: orbFloat2 18s ease-in-out infinite;
+    }
+    .orb-3 {
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(0,212,170,0.08), transparent 70%);
+      top: 50%; right: 20%;
+      animation: orbFloat3 22s ease-in-out infinite;
+    }
+
+    @keyframes orbFloat1 {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%      { transform: translate(60px,40px) scale(1.1); }
+      66%      { transform: translate(-30px,70px) scale(0.9); }
+    }
+    @keyframes orbFloat2 {
+      0%,100% { transform: translate(0,0) scale(1); }
+      50%      { transform: translate(-80px,-60px) scale(1.15); }
+    }
+    @keyframes orbFloat3 {
+      0%,100% { transform: translate(0,0); opacity: 0.3; }
+      50%      { transform: translate(40px,-40px); opacity: 0.6; }
+    }
+
+    /* ── Layout ──────────────────────────────────────────────────────────── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 32px;
+      height: 60px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(8,11,15,0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+      position: relative;
+    }
+    .logo::after {
+      content: '';
+      position: absolute;
+      bottom: -2px; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+      border-radius: 1px;
+      animation: logoLine 3s ease-in-out infinite;
+    }
+    @keyframes logoLine {
+      0%,100% { opacity: 0.6; transform: scaleX(0.7); transform-origin: left; }
+      50%      { opacity: 1;   transform: scaleX(1);   transform-origin: left; }
+    }
+
+    .header-divider {
+      width: 1px; height: 20px;
+      background: var(--border);
+    }
+
+    .header-subtitle {
+      font-size: 12.5px;
+      color: var(--text-dim);
+      font-weight: 400;
+      letter-spacing: 0.2px;
+    }
+
+    .header-tags {
+      display: flex;
+      gap: 6px;
+      margin-left: 4px;
+    }
+
+    .header-tag {
+      font-size: 10.5px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .live-badge {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent), 0 0 16px rgba(0,212,170,0.3);
+      animation: livePulse 2s ease-in-out infinite;
+    }
+    .live-dot.disconnected {
+      background: #ff4d4d;
+      box-shadow: 0 0 8px #ff4d4d;
+      animation: none;
+    }
+    @keyframes livePulse {
+      0%,100% { opacity: 1; box-shadow: 0 0 8px var(--accent), 0 0 16px rgba(0,212,170,0.3); }
+      50%      { opacity: 0.5; box-shadow: 0 0 4px var(--accent); }
+    }
+
+    /* ── Chat area ───────────────────────────────────────────────────────── */
+    #chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px 5% 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      scroll-behavior: smooth;
+    }
+
+    #chat-area::-webkit-scrollbar { width: 4px; }
+    #chat-area::-webkit-scrollbar-track { background: transparent; }
+    #chat-area::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+    }
+
+    /* ── Welcome ─────────────────────────────────────────────────────────── */
+    #welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      text-align: center;
+      padding: 40px 24px;
+      gap: 40px;
+      animation: welcomeIn 0.6s ease;
+    }
+
+    @keyframes welcomeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .welcome-logo-wrap {
+      position: relative;
+      display: inline-block;
+    }
+
+    .welcome-logo {
+      font-size: 72px;
+      font-weight: 900;
+      letter-spacing: -3px;
+      background: linear-gradient(135deg, var(--accent) 0%, #00a8ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      position: relative;
+      z-index: 1;
+      animation: logoGlow 3s ease-in-out infinite;
+    }
+
+    @keyframes logoGlow {
+      0%,100% { filter: drop-shadow(0 0 20px rgba(0,212,170,0.4)); }
+      50%      { filter: drop-shadow(0 0 40px rgba(0,212,170,0.7)); }
+    }
+
+    .welcome-logo-ring {
+      position: absolute;
+      inset: -20px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,212,170,0.15);
+      animation: ringPulse 3s ease-in-out infinite;
+    }
+    .welcome-logo-ring:nth-child(2) {
+      inset: -35px;
+      border-color: rgba(0,212,170,0.08);
+      animation-delay: 0.5s;
+    }
+
+    @keyframes ringPulse {
+      0%,100% { opacity: 0.4; transform: scale(1); }
+      50%      { opacity: 1;   transform: scale(1.05); }
+    }
+
+    .welcome-tagline {
+      font-size: 16px;
+      color: var(--text-dim);
+      max-width: 500px;
+      line-height: 1.8;
+    }
+
+    .welcome-tagline strong { color: var(--text); }
+
+    .suggestions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      max-width: 900px;
+      width: 100%;
+    }
+
+    @media (max-width: 700px) {
+      .suggestions { grid-template-columns: 1fr 1fr; }
+    }
+
+    .suggestion-btn {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 14px 18px;
+      border-radius: var(--r);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: var(--font);
+      text-align: left;
+      line-height: 1.4;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .suggestion-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--accent-glow), transparent);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .suggestion-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,212,170,0.08);
+    }
+
+    .suggestion-btn:hover::before { opacity: 1; }
+
+    .suggestion-btn .s-icon {
+      font-size: 18px;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .suggestion-btn .s-label {
+      font-weight: 600;
+      font-size: 12.5px;
+      color: var(--accent);
+      margin-bottom: 2px;
+      display: block;
+    }
+
+    /* ── Message row ─────────────────────────────────────────────────────── */
+    .msg-row {
+      display: flex;
+      gap: 14px;
+      max-width: 80%;
+    }
+
+    .msg-row.user {
+      flex-direction: row-reverse;
+      margin-left: auto;
+      max-width: 70%;
+      animation: msgSlideLeft 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    .msg-row.assistant {
+      margin-right: auto;
+      max-width: 85%;
+      animation: msgSlideRight 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    @keyframes msgSlideLeft {
+      from { opacity: 0; transform: translateX(20px) scale(0.97); }
+      to   { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    @keyframes msgSlideRight {
+      from { opacity: 0; transform: translateX(-20px) scale(0.97); }
+      to   { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    /* ── Avatar ──────────────────────────────────────────────────────────── */
+    .avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 12px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .avatar.ai {
+      background: linear-gradient(135deg, rgba(0,212,170,0.2), rgba(0,150,255,0.1));
+      border: 1px solid rgba(0,212,170,0.4);
+      color: var(--accent);
+      box-shadow: 0 0 12px rgba(0,212,170,0.15);
+      animation: avatarPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    @keyframes avatarPop {
+      from { transform: scale(0); }
+      to   { transform: scale(1); }
+    }
+
+    /* ── Bubble ──────────────────────────────────────────────────────────── */
+    .bubble {
+      padding: 14px 18px;
+      border-radius: var(--r);
+      font-size: 14.5px;
+      line-height: 1.7;
+      word-break: break-word;
+      backdrop-filter: blur(10px);
+    }
+
+    .msg-row.user .bubble {
+      background: rgba(0,212,170,0.08);
+      border: 1px solid rgba(0,212,170,0.15);
+      color: var(--text);
+      border-bottom-right-radius: var(--r-sm);
+    }
+
+    .msg-row.assistant .bubble {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: var(--r-sm);
+      color: var(--text);
+    }
+
+    /* ── Markdown ─────────────────────────────────────────────────────────*/
+    .bubble h1, .bubble h2, .bubble h3, .bubble h4 {
+      color: var(--accent);
+      margin: 18px 0 8px;
+      font-weight: 700;
+    }
+    .bubble h1 { font-size: 1.2em; }
+    .bubble h2 { font-size: 1.08em; }
+    .bubble h3 { font-size: 1em; }
+    .bubble h1:first-child, .bubble h2:first-child, .bubble h3:first-child { margin-top: 0; }
+    .bubble p  { margin: 6px 0; }
+    .bubble ul, .bubble ol { padding-left: 20px; margin: 6px 0; }
+    .bubble li { margin: 3px 0; }
+    .bubble strong { color: #fff; font-weight: 600; }
+    .bubble em { color: var(--text-dim); }
+
+    .bubble table {
+      width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px;
+    }
+    .bubble th {
+      background: rgba(0,212,170,0.08);
+      color: var(--accent);
+      padding: 8px 12px;
+      text-align: left;
+      border: 1px solid var(--border);
+      font-weight: 600;
+    }
+    .bubble td {
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+    }
+    .bubble tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+    .bubble code {
+      background: rgba(255,255,255,0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
+      color: #7ee787;
+    }
+    .bubble pre {
+      margin: 10px 0; border-radius: var(--r-sm); overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .bubble pre code { background: transparent; padding: 0; color: inherit; }
+    .bubble blockquote {
+      border-left: 3px solid var(--accent); padding-left: 14px;
+      color: var(--text-dim); margin: 8px 0;
+    }
+    .bubble hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+    /* ── Tool chips ──────────────────────────────────────────────────────── */
+    .tool-row {
+      display: flex;
+      padding-left: 48px;
+      animation: toolChipIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    @keyframes toolChipIn {
+      from { opacity: 0; transform: translateX(-12px) scale(0.95); }
+      to   { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    .tool-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: 'Fira Code', Consolas, monospace;
+      font-weight: 500;
+      white-space: nowrap;
+      max-width: 500px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: all 0.25s ease;
+    }
+
+    .tool-chip.calling {
+      background: var(--chip-call);
+      border: 1px solid var(--chip-call-b);
+      color: #ffc439;
+      animation: chipPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes chipPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(255,196,57,0); }
+      50%      { box-shadow: 0 0 0 4px rgba(255,196,57,0.08); }
+    }
+
+    .tool-chip.ok {
+      background: var(--chip-ok);
+      border: 1px solid var(--chip-ok-b);
+      color: var(--accent);
+      animation: chipResolve 0.3s ease;
+    }
+
+    .tool-chip.error {
+      background: var(--chip-err);
+      border: 1px solid var(--chip-err-b);
+      color: #ff6060;
+      animation: chipResolve 0.3s ease;
+    }
+
+    @keyframes chipResolve {
+      from { transform: scale(1.05); }
+      to   { transform: scale(1); }
+    }
+
+    /* ── Thinking ─────────────────────────────────────────────────────────── */
+    .thinking-row {
+      display: flex;
+      gap: 14px;
+      max-width: 85%;
+      align-items: flex-start;
+      animation: msgSlideRight 0.3s ease;
+    }
+
+    .thinking-dots {
+      display: flex;
+      gap: 5px;
+      padding: 16px 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      border-bottom-left-radius: var(--r-sm);
+      backdrop-filter: blur(10px);
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: 0.3;
+      animation: thinkBounce 1.4s ease-in-out infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.18s; }
+    .dot:nth-child(3) { animation-delay: 0.36s; }
+
+    @keyframes thinkBounce {
+      0%,80%,100% { transform: translateY(0); opacity: 0.3; }
+      40%          { transform: translateY(-7px); opacity: 1; }
+    }
+
+    /* ── Error ───────────────────────────────────────────────────────────── */
+    .error-msg {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,82,82,0.06);
+      border: 1px solid rgba(255,82,82,0.2);
+      color: #ff7070;
+      padding: 12px 16px;
+      border-radius: var(--r-sm);
+      font-size: 13.5px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Input bar ───────────────────────────────────────────────────────── */
+    #input-bar {
+      padding: 16px 5% 20px;
+      border-top: 1px solid var(--border);
+      background: rgba(8,11,15,0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      flex-shrink: 0;
+    }
+
+    .input-wrapper {
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 12px 16px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      max-width: 100%;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: rgba(0,212,170,0.4);
+      box-shadow: 0 0 0 3px rgba(0,212,170,0.06), 0 0 20px rgba(0,212,170,0.04);
+    }
+
+    #user-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14.5px;
+      line-height: 1.5;
+      resize: none;
+      max-height: 96px;
+      overflow-y: auto;
+    }
+
+    #user-input::placeholder { color: var(--text-muted); }
+
+    #send-btn {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      border: none;
+      color: #000;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0,212,170,0.25);
+    }
+
+    #send-btn:hover:not(:disabled) {
+      transform: scale(1.08);
+      box-shadow: 0 6px 20px rgba(0,212,170,0.4);
+    }
+
+    #send-btn:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+
+    #send-btn:disabled {
+      background: rgba(255,255,255,0.08);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    .send-icon { display: block; }
+    .spinner   { display: none; }
+    #send-btn.loading .send-icon { display: none; }
+    #send-btn.loading .spinner   { display: block; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner svg { animation: spin 0.7s linear infinite; }
+
+    .input-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      header { padding: 0 16px; }
+      .header-tags { display: none; }
+      #chat-area { padding: 20px 16px 8px; }
+      #input-bar  { padding: 12px 16px 16px; }
+      .msg-row.user { max-width: 88%; }
+      .msg-row.assistant { max-width: 96%; }
+      .suggestions { grid-template-columns: 1fr 1fr; }
+      .welcome-logo { font-size: 52px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Floating orbs -->
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<div id="app">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header>
+    <div class="logo">FINAI</div>
+    <div class="header-divider"></div>
+    <div class="header-subtitle">AI Financial Advisor &middot; Powered by Groq</div>
+    <div class="header-tags">
+      <span class="header-tag">Stocks</span>
+      <span class="header-tag">Mutual Funds</span>
+      <span class="header-tag">Tax</span>
+      <span class="header-tag">Retirement</span>
+    </div>
+    <div class="live-badge">
+      <div class="live-dot" id="live-dot"></div>
+      <span id="live-label">Live</span>
+    </div>
+  </header>
+
+  <!-- ── Chat area ──────────────────────────────────────────────────────── -->
+  <div id="chat-area">
+    <div id="welcome">
+
+      <div class="welcome-logo-wrap">
+        <div class="welcome-logo-ring"></div>
+        <div class="welcome-logo-ring"></div>
+        <div class="welcome-logo">FINAI</div>
+      </div>
+
+      <div class="welcome-tagline">
+        Your <strong>AI Financial Advisor</strong> for India.<br>
+        Real-time stocks, mutual funds, tax planning, SIP &amp; retirement calculations.
+      </div>
+
+      <div class="suggestions">
+        <button class="suggestion-btn" onclick="sendSuggestion('Calculate SIP: I invest ₹10,000 per month for 20 years at 12% annual returns. What will I get?')">
+          <span class="s-icon">📈</span>
+          <span class="s-label">SIP Calculator</span>
+          ₹10K/month for 20 years at 12%
+        </button>
+        <button class="suggestion-btn" onclick="sendSuggestion('Calculate my income tax on ₹15 lakh salary. Compare old vs new tax regime for FY 2024-25.')">
+          <span class="s-icon">💸</span>
+          <span class="s-label">Tax Planning</span>
+          Old vs new regime on ₹15L salary
+        </button>
+        <button class="suggestion-btn" onclick="sendSuggestion('What is the current price of Reliance Industries (RELIANCE.NS)? Show 1-year performance.')">
+          <span class="s-icon">📊</span>
+          <span class="s-label">Stock Price</span>
+          Reliance Industries live price
+        </button>
+        <button class="suggestion-btn" onclick="sendSuggestion('I am 30 years old and want to retire at 55. My monthly expenses are ₹60,000. How much corpus do I need and what SIP should I start?')">
+          <span class="s-icon">🏖️</span>
+          <span class="s-label">Retirement Plan</span>
+          Age 30, retire at 55 with ₹60K/month expenses
+        </button>
+        <button class="suggestion-btn" onclick="sendSuggestion('Search for Nifty 50 index mutual funds. Show top options with their NAV and returns.')">
+          <span class="s-icon">💰</span>
+          <span class="s-label">Mutual Funds</span>
+          Best Nifty 50 index funds
+        </button>
+        <button class="suggestion-btn" onclick="sendSuggestion('What is India current inflation rate and GDP growth? How should it affect my investment strategy?')">
+          <span class="s-icon">🌏</span>
+          <span class="s-label">Economy</span>
+          India inflation &amp; GDP data
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Input bar ───────────────────────────────────────────────────────── -->
+  <div id="input-bar">
+    <div class="input-wrapper">
+      <textarea
+        id="user-input"
+        rows="1"
+        placeholder="Ask me about investments, tax, stocks, retirement..."
+        autocomplete="off"
+        spellcheck="true"
+      ></textarea>
+      <button id="send-btn" title="Send (Enter)">
+        <span class="send-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </span>
+        <span class="spinner">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          </svg>
+        </span>
+      </button>
+    </div>
+    <div class="input-hint">&#8629; Enter to send &nbsp;&nbsp;&nbsp;&middot;&nbsp;&nbsp;&nbsp; Shift+&#8629; for new line</div>
+  </div>
+
+</div>
+
+<script>
+marked.setOptions({
+  highlight: (code, lang) => {
+    if (lang && hljs.getLanguage(lang)) return hljs.highlight(code, { language: lang }).value;
+    return hljs.highlightAuto(code).value;
+  },
+  breaks: true, gfm: true,
+});
+
+const chatArea   = document.getElementById('chat-area');
+const welcome    = document.getElementById('welcome');
+const inputEl    = document.getElementById('user-input');
+const sendBtn    = document.getElementById('send-btn');
+const liveDot    = document.getElementById('live-dot');
+const liveLabel  = document.getElementById('live-label');
+
+let ws = null, wsReady = false, reconnectDelay = 1000, hasMessages = false;
+const pendingChips = [];
+
+// ── WebSocket ──────────────────────────────────────────────────────────────
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws`);
+
+  ws.onopen = () => {
+    wsReady = true; reconnectDelay = 1000;
+    liveDot.classList.remove('disconnected');
+    liveLabel.textContent = 'Live';
+  };
+
+  ws.onclose = () => {
+    wsReady = false;
+    liveDot.classList.add('disconnected');
+    liveLabel.textContent = 'Reconnecting…';
+    setTimeout(connectWS, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+  };
+
+  ws.onerror = () => ws.close();
+
+  ws.onmessage = ({ data }) => {
+    let msg; try { msg = JSON.parse(data); } catch { return; }
+    if      (msg.type === 'tool_call')   appendToolChip(msg.name, msg.input, 'calling');
+    else if (msg.type === 'tool_result') resolveToolChip(msg.name, msg.ok);
+    else if (msg.type === 'response')    { removeThinking(); appendAssistantMessage(msg.text); setInputEnabled(true); }
+    else if (msg.type === 'error')       { removeThinking(); appendErrorMessage(msg.message); setInputEnabled(true); }
+  };
+}
+
+connectWS();
+
+// ── Send ───────────────────────────────────────────────────────────────────
+function sendMessage(text) {
+  text = text.trim();
+  if (!text || !wsReady) return;
+
+  if (!hasMessages) {
+    // Animate welcome out
+    welcome.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+    welcome.style.opacity = '0';
+    welcome.style.transform = 'translateY(-10px)';
+    setTimeout(() => welcome.remove(), 300);
+    hasMessages = true;
+  }
+
+  appendUserMessage(text);
+  appendThinking();
+  setInputEnabled(false);
+  ws.send(text);
+  inputEl.value = '';
+  autoResize();
+}
+
+// ── DOM helpers ────────────────────────────────────────────────────────────
+function appendUserMessage(text) {
+  const row = el('div', 'msg-row user');
+  const bubble = el('div', 'bubble');
+  bubble.textContent = text;
+  row.appendChild(bubble);
+  chatArea.appendChild(row);
+  scrollToBottom();
+}
+
+let thinkingEl = null;
+
+function appendThinking() {
+  removeThinking();
+  const row = el('div', 'thinking-row');
+  const av = makeAvatar();
+  const dots = el('div', 'thinking-dots');
+  dots.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+  row.append(av, dots);
+  chatArea.appendChild(row);
+  thinkingEl = row;
+  scrollToBottom();
+}
+
+function removeThinking() {
+  if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+}
+
+function appendAssistantMessage(text) {
+  const row = el('div', 'msg-row assistant');
+  const av = makeAvatar();
+  const bubble = el('div', 'bubble');
+  bubble.innerHTML = marked.parse(text || '');
+  bubble.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+  row.append(av, bubble);
+  chatArea.appendChild(row);
+  pendingChips.length = 0;
+  scrollToBottom();
+}
+
+function appendToolChip(name, input, state) {
+  const args = Object.entries(input || {}).slice(0, 2)
+    .map(([, v]) => { const s = typeof v === 'object' ? JSON.stringify(v) : String(v); return s.length > 20 ? s.slice(0,20)+'…' : s; })
+    .join(', ');
+  const label = args ? `${name}(${args})` : `${name}()`;
+
+  const row = el('div', 'tool-row');
+  const chip = el('span', `tool-chip ${state}`);
+  chip.dataset.toolName = name;
+  chip.innerHTML = `<span>🔧</span> calling ${escHtml(label)}`;
+  row.appendChild(chip);
+  chatArea.appendChild(row);
+  pendingChips.push({ name, chipEl: chip });
+  scrollToBottom();
+}
+
+function resolveToolChip(name, ok) {
+  const idx = pendingChips.findIndex(c => c.name === name);
+  if (idx === -1) return;
+  const { chipEl } = pendingChips.splice(idx, 1)[0];
+  chipEl.className = `tool-chip ${ok ? 'ok' : 'error'}`;
+  chipEl.innerHTML = `<span>${ok ? '✓' : '✗'}</span> ${escHtml(chipEl.dataset.toolName)} — ${ok ? 'got result' : 'error'}`;
+}
+
+function appendErrorMessage(message) {
+  const div = el('div', 'error-msg');
+  div.innerHTML = `<span>⚠</span> ${escHtml(message)}`;
+  chatArea.appendChild(div);
+  pendingChips.length = 0;
+  scrollToBottom();
+}
+
+function setInputEnabled(on) {
+  inputEl.disabled = !on;
+  sendBtn.disabled = !on;
+  sendBtn.classList.toggle('loading', !on);
+  if (on) inputEl.focus();
+}
+
+function scrollToBottom() { chatArea.scrollTop = chatArea.scrollHeight; }
+
+function makeAvatar() {
+  const av = el('div', 'avatar ai');
+  av.textContent = 'F';
+  return av;
+}
+
+function el(tag, cls) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  return e;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Suggestions ────────────────────────────────────────────────────────────
+function sendSuggestion(text) { inputEl.value = text; autoResize(); sendMessage(text); }
+
+// ── Textarea auto-resize ───────────────────────────────────────────────────
+function autoResize() {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 96) + 'px';
+}
+
+inputEl.addEventListener('input', autoResize);
+inputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!sendBtn.disabled) sendMessage(inputEl.value); }
+});
+sendBtn.addEventListener('click', () => { if (!sendBtn.disabled) sendMessage(inputEl.value); });
+inputEl.focus();
+</script>
+</body>
+</html>
